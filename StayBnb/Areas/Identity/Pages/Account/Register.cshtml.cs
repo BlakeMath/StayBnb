@@ -29,13 +29,15 @@ public class RegisterModel : PageModel
     private readonly IUserEmailStore<IdentityUser> _emailStore;
     private readonly ILogger<RegisterModel> _logger;
     private readonly IEmailSender _emailSender;
+    private readonly ApplicationDbContext _context;
 
     public RegisterModel(
         UserManager<IdentityUser> userManager,
         IUserStore<IdentityUser> userStore,
         SignInManager<IdentityUser> signInManager,
         ILogger<RegisterModel> logger,
-        IEmailSender emailSender)
+        IEmailSender emailSender,
+        ApplicationDbContext context)
     {
         _userManager = userManager;
         _userStore = userStore;
@@ -43,6 +45,7 @@ public class RegisterModel : PageModel
         _signInManager = signInManager;
         _logger = logger;
         _emailSender = emailSender;
+        _context = context;
     }
 
     /// <summary>
@@ -70,6 +73,16 @@ public class RegisterModel : PageModel
     /// </summary>
     public class InputModel
     {
+        [Required]
+        [StringLength(50)]
+        [Display(Name = "First name")]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(50)]
+        [Display(Name = "Last name")]
+        public string LastName { get; set; } = string.Empty;
+
         /// <summary>
         ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
@@ -112,6 +125,8 @@ public class RegisterModel : PageModel
         ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
         if (ModelState.IsValid)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
             var user = CreateUser();
 
             await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
@@ -120,6 +135,34 @@ public class RegisterModel : PageModel
 
             if (result.Succeeded)
             {
+                // Assign the existing Guest role to the new account.
+                var roleResult = await _userManager.AddToRoleAsync(user, "Guest");
+
+                if (!roleResult.Succeeded)
+                {
+                    foreach (var error in roleResult.Errors)
+                    {
+                        ModelState.AddModelError(string.Empty, error.Description);
+                    }
+
+                    return Page();
+                }
+
+                // Create the profile using the same ID as the Identity account.
+                var profile = new StayBnb.Models.ApplicationUser
+                {
+                    Id = user.Id,
+                    FirstName = Input.FirstName.Trim(),
+                    LastName = Input.LastName.Trim(),
+                    CreatedAt = DateTime.Now
+                };
+
+                _context.ApplicationUsers.Add(profile);
+                await _context.SaveChangesAsync();
+
+                // Keep the account, role assignment, and profile.
+                await transaction.CommitAsync();
+
                 _logger.LogInformation("User created a new account with password.");
 
                 var userId = await _userManager.GetUserIdAsync(user);
