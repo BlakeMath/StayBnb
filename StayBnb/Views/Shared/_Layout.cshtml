@@ -25,6 +25,33 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
+                        @if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="Admin"
+                                   asp-action="Index">Dashboard</a>
+                            </li>
+                        }
+                        else if (User.IsInRole("Host"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="Host"
+                                   asp-action="Index">Dashboard</a>
+                            </li>
+                        }
+                        else if (User.IsInRole("Guest"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="Guest"
+                                   asp-action="Index">Dashboard</a>
+                            </li>
+                        }
                     </ul>
                     <partial name="_LoginPartial" />
                 </div>
