@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using StayBnb.Data;
 using StayBnb.Models;
 
@@ -21,6 +22,17 @@ namespace StayBnb.Controllers
         public IActionResult Index()
         {
             return View();
+        }
+
+        public async Task<IActionResult> ActivityLogs()
+        {
+            var logs = await _context.ActivityLogs
+                .AsNoTracking()
+                .OrderByDescending(log => log.CreatedAt)
+                .ThenByDescending(log => log.Id)
+                .ToListAsync();
+
+            return View(logs);
         }
 
         // GET: Admin/Users
