@@ -10,3 +10,8 @@
     This is where you will review hosting applications
     and monitor activity logs.
 </p>
+
+@if (User.IsInRole("SuperAdmin"))
+{
+    <a asp-controller="Admin" asp-action="Users" class="btn btn-primary"> Manage Users </a>
+}
