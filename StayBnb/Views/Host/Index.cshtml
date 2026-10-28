@@ -1,4 +1,6 @@
-﻿@{
+﻿@model List<StayBnb.Models.HostProperty>
+
+@{
     ViewData["Title"] = "Host Dashboard";
 }
 
@@ -6,7 +8,33 @@
 
 <p>Welcome, @User.Identity?.Name.</p>
 
-<p>
-    This is where you will manage your properties, bookings,
-    and guest check-ins.
-</p>
+<h2 class="h4">My approved properties</h2>
+
+@if (Model.Count == 0)
+{
+    <p>You have no approved properties.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Property</th>
+                    <th>Address</th>
+                    <th>Price per night</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var property in Model)
+                {
+                    <tr>
+                        <td>@property.Title</td>
+                        <td>@property.Address</td>
+                        <td>R @property.PricePerNight.ToString("F2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
