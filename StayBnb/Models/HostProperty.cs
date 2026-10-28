@@ -17,7 +17,7 @@ namespace StayBnb.Models
         public string Description { get; set; } = string.Empty;
 
         [Precision(18, 2)]
-        [Range(typeof(decimal),"0.01", "999999.99", ErrorMessage = "The price per night must be greater than zero and less than 1 million.")]
+        [Range(typeof(decimal),"0.01", "999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "Enter a price between 0.01 and 999999.99.")]
         public decimal PricePerNight { get; set; }
 
         [Required]

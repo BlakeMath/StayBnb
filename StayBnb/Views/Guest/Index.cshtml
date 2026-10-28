@@ -4,6 +4,15 @@
 
 <h1>Guest Dashboard</h1>
 
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="alert">
+        @success
+    </div>
+}
+
 <p>Welcome, @User.Identity?.Name.</p>
 
 <p>This is where you will manage your bookings and check-ins.</p>
+
+<a asp-controller="Guest" asp-action="ApplyToHost" class="btn btn-primary"> Become a Host </a>

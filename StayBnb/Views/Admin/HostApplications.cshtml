@@ -1,0 +1,95 @@
+﻿@model List<StayBnb.ViewModels.HostApplicationListViewModel>
+
+@{
+    ViewData["Title"] = "Pending Host Applications";
+}
+
+<h1>Pending Host Applications</h1>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="alert">
+        @success
+    </div>
+}
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger" role="alert">
+        @error
+    </div>
+}
+
+@if (Model.Count == 0)
+{
+    <p>There are no pending Host applications.</p>
+}
+else
+{
+    @foreach (var application in Model)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h4">@application.PropertyTitle</h2>
+
+                <p>
+                    <strong>Application:</strong>
+                    @application.ApplicationId
+                    <br />
+                    <strong>Applicant:</strong>
+                    @application.ApplicantEmail
+                    <br />
+                    <strong>Submitted:</strong>
+                    @application.AppliedAt.ToString("yyyy-MM-dd HH:mm")
+                </p>
+
+                <p>
+                    <strong>Address:</strong>
+                    @application.Address
+                </p>
+
+                <p>
+                    <strong>Price per night:</strong>
+                    R @application.PricePerNight.ToString("F2")
+                </p>
+
+                <p>@application.Description</p>
+
+                @if (application.ImageUrls.Count == 0)
+                {
+                    <p class="text-danger">
+                        No property image is available.
+                    </p>
+                }
+                else
+                {
+                    <div class="row mb-3">
+                        @foreach (var imageUrl in application.ImageUrls)
+                        {
+                            <div class="col-md-4 mb-2">
+                                <img src="@Url.Content(imageUrl)" alt="Property image for @application.PropertyTitle" class="img-fluid rounded" />
+                            </div>
+                        }
+                    </div>
+                }
+
+                <form asp-controller="Admin" asp-action="ReviewHostApplication" method="post">
+
+                    <input type="hidden" name="id" value="@application.ApplicationId" />
+
+                    <button type="submit" name="decision" value="Approve" class="btn btn-success">
+                        Approve
+                    </button>
+
+                    <button type="submit" name="decision" value="Reject" class="btn btn-danger">
+                        Reject
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+}
+
+<a asp-controller="Admin" asp-action="Index">
+    Back to dashboard
+</a>

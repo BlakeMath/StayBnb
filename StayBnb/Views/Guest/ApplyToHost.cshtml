@@ -1,0 +1,63 @@
+﻿@model StayBnb.ViewModels.HostApplicationViewModel
+
+@{
+    ViewData["Title"] = "Become a Host";
+}
+
+<h1>Become a Host</h1>
+
+<p>Enter your property details and select a property image.</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-controller="Guest" asp-action="ApplyToHost" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly"
+                 class="text-danger"
+                 role="alert"></div>
+
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="5"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="PricePerNight" class="form-label"></label>
+                <input asp-for="PricePerNight" class="form-control" type="number" min="0.01" max="999999.99" step="0.01" />
+                <span asp-validation-for="PricePerNight" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Address" class="form-label"></label>
+                <textarea asp-for="Address" class="form-control" rows="2"></textarea>
+                <span asp-validation-for="Address" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Image" class="form-label"></label>
+                <input asp-for="Image" class="form-control" type="file" accept=".jpg,.jpeg,.png" />
+                <span asp-validation-for="Image" class="text-danger"></span>
+
+                <div class="form-text">
+                    Select a JPG or PNG image, no larger than 5MB.
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                Submit application
+            </button>
+
+            <a asp-controller="Guest" asp-action="Index" class="btn btn-outline-secondary"> Cancel </a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
