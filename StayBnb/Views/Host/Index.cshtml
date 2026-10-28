@@ -15,6 +15,12 @@
 
 <p>Welcome, @User.Identity?.Name.</p>
 
+<p>
+    <a asp-controller="Host" asp-action="BookingRequests" class="btn btn-primary">
+        Booking Requests
+    </a>
+</p>
+
 <h2 class="h4">My approved properties</h2>
 
 @if (Model.Count == 0)
