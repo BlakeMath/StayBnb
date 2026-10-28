@@ -4,6 +4,7 @@ using StayBnb.Data;
 using StayBnb.Models;
 using StayBnb.ViewModels;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace StayBnb.Controllers
 {
@@ -25,12 +26,51 @@ namespace StayBnb.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> Properties(string? search)
+        {
+            var query = _context.HostProperties
+                .AsNoTracking()
+                .Where(property =>
+                    property.IsActive &&
+                    _context.HostApplications.Any(application =>
+                        application.PropertyId == property.Id &&
+                        application.ApplicationUserId == property.HostId &&
+                        application.Status == ApplicationStatus.Approved));
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                search = search.Trim();
+
+                query = query.Where(property => property.Address.Contains(search));
+            }
+
+            var properties = await query
+                .OrderBy(property => property.Title)
+                .ThenBy(property => property.Id)
+                .Select(property => new PropertyListViewModel
+                {
+                    Id = property.Id,
+                    Title = property.Title,
+                    Address = property.Address,
+                    PricePerNight = property.PricePerNight,
+                    ImageUrl = _context.PropertyImages
+                        .Where(image => image.PropertyId == property.Id)
+                        .OrderBy(image => image.Id)
+                        .Select(image => image.ImageUrl)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            ViewData["Search"] = search;
+
+            return View(properties);
+        }
+
+        [HttpGet]
         public IActionResult ApplyToHost()
         {
             return View(new HostApplicationViewModel());
         }
-
-
 
         [HttpPost]
         [ValidateAntiForgeryToken]

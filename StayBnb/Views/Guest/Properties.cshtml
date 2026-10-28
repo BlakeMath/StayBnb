@@ -1,0 +1,74 @@
+﻿@model List<StayBnb.ViewModels.PropertyListViewModel>
+
+@{
+    ViewData["Title"] = "Browse Properties";
+}
+
+<h1>Browse Properties</h1>
+
+<form asp-controller="Guest" asp-action="Properties" method="get" class="mb-4">
+
+    <label for="search" class="form-label">
+        Search by city or address
+    </label>
+
+    <div class="input-group">
+        <input id="search" name="search" value="@ViewData["Search"]" class="form-control" placeholder="For example, Durban" />
+
+        <button type="submit" class="btn btn-primary">
+            Search
+        </button>
+
+        <a asp-controller="Guest" asp-action="Properties" class="btn btn-outline-secondary">
+            Clear
+        </a>
+    </div>
+</form>
+
+@if (Model.Count == 0)
+{
+    <p>No properties match your search.</p>
+}
+else
+{
+    <div class="row">
+        @foreach (var property in Model)
+        {
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    @if (!string.IsNullOrWhiteSpace(property.ImageUrl))
+                    {
+                        <img src="@Url.Content(property.ImageUrl)" alt="Property image for @property.Title" class="card-img-top" style="height: 220px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <div class="p-4 bg-light text-center">
+                            Image unavailable
+                        </div>
+                    }
+
+                    <div class="card-body">
+                        <h2 class="h5 card-title">
+                            @property.Title
+                        </h2>
+
+                        <p class="card-text">
+                            @property.Address
+                        </p>
+
+                        <p class="card-text">
+                            <strong>
+                                R @property.PricePerNight.ToString("F2")
+                            </strong>
+                            per night
+                        </p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<a asp-controller="Guest" asp-action="Index">
+    Back to dashboard
+</a>
