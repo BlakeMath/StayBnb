@@ -13,10 +13,12 @@ namespace StayBnb.Controllers
     public class HostController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IWebHostEnvironment _environment;
 
-        public HostController(ApplicationDbContext context)
+        public HostController(ApplicationDbContext context, IWebHostEnvironment environment)
         {
             _context = context;
+            _environment = environment;
         }
 
         public async Task<IActionResult> Index()
@@ -41,6 +43,184 @@ namespace StayBnb.Controllers
                 .ToListAsync();
 
             return View(properties);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CheckInSubmissions()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var documents = await (
+                from document in _context.GuestDocuments
+                join checkIn in _context.GuestCheckIns
+                    on document.GuestCheckInId equals checkIn.Id
+                join booking in _context.Bookings
+                    on checkIn.BookingId equals booking.Id
+                join property in _context.HostProperties
+                    on booking.PropertyId equals property.Id
+                join guest in _context.Users
+                    on booking.GuestId equals guest.Id
+                where property.HostId == userId &&
+                      booking.Status == BookingStatus.Approved &&
+                      checkIn.Status == CheckInStatus.Submitted &&
+                      document.Status == DocumentStatus.Pending
+                orderby booking.Id, document.Id
+                select new HostDocumentReviewViewModel
+                {
+                    DocumentId = document.Id,
+                    BookingId = booking.Id,
+                    PropertyTitle = property.Title,
+                    GuestEmail = guest.Email ?? string.Empty,
+                    DocumentType = document.DocumentType
+                })
+                .ToListAsync();
+
+            return View(documents);
+        }
+
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> DownloadGuestDocument(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var document = await (
+                from item in _context.GuestDocuments
+                join checkIn in _context.GuestCheckIns
+                    on item.GuestCheckInId equals checkIn.Id
+                join booking in _context.Bookings
+                    on checkIn.BookingId equals booking.Id
+                join property in _context.HostProperties
+                    on booking.PropertyId equals property.Id
+                where item.Id == id &&
+                      property.HostId == userId
+                select item)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            if (document == null)
+            {
+                return NotFound();
+            }
+
+            // Only allow a filename, never a folder path.
+            if (string.IsNullOrWhiteSpace(document.FileName) || Path.GetFileName(document.FileName) != document.FileName)
+            {
+                return NotFound();
+            }
+
+            var extension = Path.GetExtension(document.FileName).ToLowerInvariant();
+
+            string contentType;
+
+            if (extension == ".jpg" || extension == ".jpeg")
+            {
+                contentType = "image/jpeg";
+            }
+            else if (extension == ".png")
+            {
+                contentType = "image/png";
+            }
+            else
+            {
+                return NotFound();
+            }
+
+            var filePath = Path.Combine(_environment.ContentRootPath, "App_Data", "GuestDocuments", document.FileName);
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound();
+            }
+
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+
+            return PhysicalFile(filePath, contentType, $"Document-{document.Id}{extension}");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReviewGuestDocument(int documentId, bool approve)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            var submission = await (
+                from document in _context.GuestDocuments
+                join checkIn in _context.GuestCheckIns
+                    on document.GuestCheckInId equals checkIn.Id
+                join booking in _context.Bookings
+                    on checkIn.BookingId equals booking.Id
+                join property in _context.HostProperties
+                    on booking.PropertyId equals property.Id
+                where document.Id == documentId &&
+                      property.HostId == userId &&
+                      booking.Status == BookingStatus.Approved &&
+                      checkIn.Status == CheckInStatus.Submitted &&
+                      document.Status == DocumentStatus.Pending
+                select new
+                {
+                    Document = document,
+                    CheckIn = checkIn,
+                    Booking = booking
+                })
+                .FirstOrDefaultAsync();
+
+            if (submission == null)
+            {
+                return NotFound();
+            }
+
+            submission.Document.Status = approve
+                ? DocumentStatus.Verified
+                : DocumentStatus.Rejected;
+
+            submission.CheckIn.Status = approve
+                ? CheckInStatus.Verified
+                : CheckInStatus.Rejected;
+
+            var decision = approve ? "Verified" : "Rejected";
+
+            _context.ActivityLogs.Add(new ActivityLog
+            {
+                UserId = userId,
+                Action = $"{decision} document for booking {submission.Booking.Id}.",
+                ActivityType = ActivityType.DocumentReviewed,
+                CreatedAt = DateTime.Now
+            });
+
+            _context.Notifications.Add(new Notification
+            {
+                UserId = submission.Booking.GuestId,
+                Title = $"Check-in {decision.ToLowerInvariant()} for booking {submission.Booking.Id}.",
+                Type = NotificationType.CheckInUpdate,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            TempData["Success"] = approve
+                ? "The Guest's document has been verified."
+                : "The document was rejected. The Guest can upload a replacement.";
+
+            return RedirectToAction(nameof(CheckInSubmissions));
         }
 
         [HttpGet]

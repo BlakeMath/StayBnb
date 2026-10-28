@@ -1,0 +1,70 @@
+﻿@model List<StayBnb.ViewModels.HostDocumentReviewViewModel>
+
+@{
+    ViewData["Title"] = "Check-in Submissions";
+}
+
+<h1>Check-in Submissions</h1>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="alert">
+        @success
+    </div>
+}
+
+<p>Guest documents awaiting your verification.</p>
+
+@if (Model.Count == 0)
+{
+    <p>There are no documents awaiting verification.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Booking</th>
+                    <th>Property</th>
+                    <th>Guest</th>
+                    <th>Document type</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var document in Model)
+                {
+                    <tr>
+                        <td>@document.BookingId</td>
+                        <td>@document.PropertyTitle</td>
+                        <td>@document.GuestEmail</td>
+                        <td>@document.DocumentType</td>
+                        <td>
+                            <a asp-controller="Host" asp-action="DownloadGuestDocument" asp-route-id="@document.DocumentId" class="btn btn-sm btn-outline-primary">
+                                Download document
+                            </a>
+
+                            <form asp-controller="Host" asp-action="ReviewGuestDocument" method="post" class="d-inline">
+
+                                <input type="hidden" name="documentId" value="@document.DocumentId" />
+
+                                <button type="submit" name="approve" value="true" class="btn btn-sm btn-success">
+                                    Verify
+                                </button>
+
+                                <button type="submit" name="approve" value="false" class="btn btn-sm btn-danger">
+                                    Reject
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<a asp-controller="Host" asp-action="Index" class="btn btn-outline-secondary">
+    Back to dashboard
+</a>

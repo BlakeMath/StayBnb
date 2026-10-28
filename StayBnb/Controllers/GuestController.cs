@@ -223,9 +223,9 @@ namespace StayBnb.Controllers
                 return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
             }
 
-            if (checkIn.Status != CheckInStatus.Pending)
+            if (checkIn.Status != CheckInStatus.Pending && checkIn.Status != CheckInStatus.Rejected)
             {
-                TempData["Error"] ="This check-in has already been submitted.";
+                TempData["Error"] = "You can only upload a document before submission or after rejection.";
 
                 return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
             }

@@ -93,7 +93,23 @@ else
     }
 }
 
-@if (Model.InstructionsAvailable && Model.Status == CheckInStatus.Pending)
+@if (Model.Status == CheckInStatus.Rejected)
+{
+    <div class="alert alert-warning" role="alert">
+        The Host rejected your document.
+        Please upload a clear replacement of the required document type.
+    </div>
+}
+
+@if (Model.Status == CheckInStatus.Verified)
+{
+    <div class="alert alert-success" role="alert">
+        The Host has verified your document.
+        Your check-in documents are complete.
+    </div>
+}
+
+@if (Model.InstructionsAvailable && (Model.Status == CheckInStatus.Pending || Model.Status == CheckInStatus.Rejected))
 {
     <h3 class="h5">Upload your document</h3>
 
