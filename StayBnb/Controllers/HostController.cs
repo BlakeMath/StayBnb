@@ -680,5 +680,74 @@ namespace StayBnb.Controllers
 
             return RedirectToAction(nameof(Index));
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarkArrived(int bookingId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            var booking = await _context.Bookings
+                .FirstOrDefaultAsync(booking =>
+                    booking.Id == bookingId &&
+                    booking.Status == BookingStatus.Approved &&
+                    _context.HostProperties.Any(property =>
+                        property.Id == booking.PropertyId &&
+                        property.HostId == userId));
+
+            if (booking == null)
+            {
+                return NotFound();
+            }
+
+            var verified = await _context.GuestCheckIns .AnyAsync(checkIn => checkIn.BookingId == booking.Id && checkIn.Status == CheckInStatus.Verified);
+
+            if (!verified)
+            {
+                TempData["Error"] = "Verify the Guest's document before marking arrival.";
+
+                return RedirectToAction(nameof(ConfirmedBookings));
+            }
+
+            if (DateTime.Today < booking.CheckInDate.Date || DateTime.Today >= booking.CheckOutDate.Date)
+            {
+                TempData["Error"] = "Arrival can only be recorded during the booked stay.";
+
+                return RedirectToAction(nameof(ConfirmedBookings));
+            }
+
+            booking.Status = BookingStatus.CheckedIn;
+
+            _context.ActivityLogs.Add(new ActivityLog
+            {
+                UserId = userId,
+                Action = $"Marked booking {booking.Id} as CheckedIn.",
+                ActivityType = ActivityType.BookingStatusChanged,
+                CreatedAt = DateTime.Now
+            });
+
+            _context.Notifications.Add(new Notification
+            {
+                UserId = booking.GuestId,
+                Title = $"Arrival confirmed for booking {booking.Id}.",
+                Type = NotificationType.BookingUpdate,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            TempData["Success"] = "The Guest has been marked as arrived.";
+
+            return RedirectToAction(nameof(ConfirmedBookings));
+        }
     }
 }
