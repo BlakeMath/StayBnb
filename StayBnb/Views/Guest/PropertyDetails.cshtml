@@ -1,0 +1,56 @@
+﻿@model StayBnb.ViewModels.PropertyDetailsViewModel
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<h1>@Model.Title</h1>
+
+<p>@Model.Address</p>
+
+@if (Model.ImageUrls.Count == 0)
+{
+    <div class="alert alert-secondary">
+        No images are available for this property.
+    </div>
+}
+else
+{
+    <div class="row mb-4">
+        @foreach (var imageUrl in Model.ImageUrls)
+        {
+            <div class="col-md-6 mb-3">
+                <img src="@Url.Content(imageUrl)" alt="Property image for @Model.Title" class="img-fluid rounded" style="width: 100%; height: 300px; object-fit: cover;" />
+            </div>
+        }
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <h2 class="h4">About this property</h2>
+
+        <p style="white-space: pre-line;">@Model.Description</p>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">Price per night</h2>
+
+                <p class="mb-0">
+                    <strong>
+                        R @Model.PricePerNight.ToString("F2")
+                    </strong>
+                </p>
+                <a asp-controller="Guest" asp-action="Book" asp-route-id="@Model.Id" class="btn btn-primary mt-3">
+                    Book this property
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<a asp-controller="Guest" asp-action="Properties" class="btn btn-outline-secondary mt-4">
+    Back to properties
+</a>

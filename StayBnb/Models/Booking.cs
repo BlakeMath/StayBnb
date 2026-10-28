@@ -21,8 +21,20 @@ namespace StayBnb.Models
         [DataType(DataType.Date)]
         public DateTime CheckOutDate { get; set; }
 
+        [Range(1, int.MaxValue,ErrorMessage = "At least one traveler is required.")]
+        public int NumberOfTravelers { get; set; } = 1;
+
         [Precision(18, 2)]
-        [Range(typeof(decimal), "0.01", "999999999.99", ErrorMessage = "The total price must be greater than zero.")]
+        [Range(typeof(decimal), "0", "999999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "The cleaning fee cannot be negative.")]
+        public decimal CleaningFee { get; set; }
+
+        [Precision(18, 2)]
+        [Range(typeof(decimal), "0", "999999999.99", ParseLimitsInInvariantCulture = true,
+            ErrorMessage = "The service fee cannot be negative.")]
+        public decimal ServiceFee { get; set; }
+
+        [Precision(18, 2)]
+        [Range(typeof(decimal), "0.01", "999999999.99", ParseLimitsInInvariantCulture = true, ErrorMessage = "The total price must be greater than zero.")]
         public decimal TotalPrice { get; set; }
 
         [EnumDataType(typeof(BookingStatus))]

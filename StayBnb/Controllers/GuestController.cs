@@ -5,6 +5,7 @@ using StayBnb.Models;
 using StayBnb.ViewModels;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace StayBnb.Controllers
 {
@@ -13,11 +14,13 @@ namespace StayBnb.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _configuration;
 
-        public GuestController(ApplicationDbContext context, IWebHostEnvironment environment)
+        public GuestController(ApplicationDbContext context, IWebHostEnvironment environment, IConfiguration configuration)
         {
             _context = context;
             _environment = environment;
+            _configuration = configuration;
         }
 
         public IActionResult Index()
@@ -64,6 +67,286 @@ namespace StayBnb.Controllers
             ViewData["Search"] = search;
 
             return View(properties);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> PropertyDetails(int id)
+        {
+            var property = await _context.HostProperties
+                .AsNoTracking()
+                .Where(property =>
+                    property.Id == id &&
+                    property.IsActive &&
+                    _context.HostApplications.Any(application =>
+                        application.PropertyId == property.Id &&
+                        application.ApplicationUserId == property.HostId &&
+                        application.Status == ApplicationStatus.Approved))
+                .Select(property => new PropertyDetailsViewModel
+                {
+                    Id = property.Id,
+                    Title = property.Title,
+                    Description = property.Description,
+                    Address = property.Address,
+                    PricePerNight = property.PricePerNight,
+                    ImageUrls = _context.PropertyImages
+                        .Where(image => image.PropertyId == property.Id)
+                        .OrderBy(image => image.Id)
+                        .Select(image => image.ImageUrl)
+                        .ToList()
+                })
+                .FirstOrDefaultAsync();
+
+            if (property == null)
+            {
+                return NotFound();
+            }
+
+            return View(property);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Book(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var property = await _context.HostProperties
+                .AsNoTracking()
+                .FirstOrDefaultAsync(property =>
+                    property.Id == id &&
+                    property.IsActive &&
+                    property.HostId != userId &&
+                    _context.HostApplications.Any(application =>
+                        application.PropertyId == property.Id &&
+                        application.ApplicationUserId == property.HostId &&
+                        application.Status == ApplicationStatus.Approved));
+
+            if (property == null)
+            {
+                return NotFound();
+            }
+
+            var cleaningFee = _configuration.GetValue<decimal?>("BookingFees:CleaningFee");
+
+            var serviceFee =
+                _configuration.GetValue<decimal?>("BookingFees:ServiceFee");
+
+            if (!cleaningFee.HasValue || !serviceFee.HasValue || cleaningFee.Value < 0 || serviceFee.Value < 0)
+            {
+                throw new InvalidOperationException("Configure valid, non-negative booking fees in appsettings.json.");
+            }
+
+            var model = new CreateBookingViewModel
+            {
+                PropertyId = property.Id,
+                PropertyTitle = property.Title,
+                PricePerNight = property.PricePerNight,
+                CleaningFee = cleaningFee.Value,
+                ServiceFee = serviceFee.Value,
+                CheckInDate = DateTime.Today.AddDays(1),
+                CheckOutDate = DateTime.Today.AddDays(2),
+                NumberOfTravelers = 1
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitBooking(
+        [Bind("PropertyId,CheckInDate,CheckOutDate,NumberOfTravelers")]
+        CreateBookingViewModel model, string? quotedTotal)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            var property = await _context.HostProperties
+                .AsNoTracking()
+                .FirstOrDefaultAsync(property =>
+                    property.Id == model.PropertyId &&
+                    property.IsActive &&
+                    property.HostId != userId &&
+                    _context.HostApplications.Any(application =>
+                        application.PropertyId == property.Id &&
+                        application.ApplicationUserId == property.HostId &&
+                        application.Status == ApplicationStatus.Approved));
+
+            if (property == null)
+            {
+                return NotFound();
+            }
+
+            var cleaningFee = _configuration.GetValue<decimal?>("BookingFees:CleaningFee");
+
+            var serviceFee = _configuration.GetValue<decimal?>("BookingFees:ServiceFee");
+
+            if (!cleaningFee.HasValue || !serviceFee.HasValue || cleaningFee.Value < 0 || serviceFee.Value < 0)
+            {
+                throw new InvalidOperationException("Configure valid, non-negative booking fees in appsettings.json.");
+            }
+
+            // Recalculate using current server-side prices.
+            model.PropertyTitle = property.Title;
+            model.PricePerNight = property.PricePerNight;
+            model.CleaningFee = cleaningFee.Value;
+            model.ServiceFee = serviceFee.Value;
+
+            if (!ModelState.IsValid)
+            {
+                return View("Book", model);
+            }
+
+            if (model.TotalPrice > 999999999.99m)
+            {
+                ModelState.AddModelError( string.Empty, "The total exceeds the supported booking amount.");
+
+                return View("Book", model);
+            }
+
+            // Ask the Guest to review again if the price changed.
+            if (!decimal.TryParse( quotedTotal, NumberStyles.Number, CultureInfo.InvariantCulture, out var previousTotal) || previousTotal != model.TotalPrice)
+            {
+                ModelState.AddModelError(string.Empty, "The price has changed or the quote is missing. Review the total and submit again.");
+
+                return View("ReviewBooking", model);
+            }
+
+            var checkIn = model.CheckInDate!.Value.Date;
+            var checkOut = model.CheckOutDate!.Value.Date;
+
+            var unavailable = await _context.Bookings.AnyAsync(booking =>
+                booking.PropertyId == property.Id &&
+                (booking.Status == BookingStatus.Approved ||
+                 booking.Status == BookingStatus.CheckedIn) &&
+                booking.CheckInDate < checkOut &&
+                booking.CheckOutDate > checkIn);
+
+            if (unavailable)
+            {
+                ModelState.AddModelError(string.Empty, "This property is unavailable for those dates. Choose another stay.");
+
+                return View("Book", model);
+            }
+
+            var duplicate = await _context.Bookings.AnyAsync(booking =>
+                booking.PropertyId == property.Id &&
+                booking.GuestId == userId &&
+                booking.Status == BookingStatus.Pending &&
+                booking.CheckInDate == checkIn &&
+                booking.CheckOutDate == checkOut);
+
+            if (duplicate)
+            {
+                ModelState.AddModelError(string.Empty, "You already have a pending request for this property and these dates.");
+
+                return View("Book", model);
+            }
+
+            var booking = new Booking
+            {
+                PropertyId = property.Id,
+                GuestId = userId,
+                CheckInDate = checkIn,
+                CheckOutDate = checkOut,
+                NumberOfTravelers = model.NumberOfTravelers!.Value,
+                CleaningFee = model.CleaningFee,
+                ServiceFee = model.ServiceFee,
+                TotalPrice = model.TotalPrice,
+                Status = BookingStatus.Pending
+            };
+
+            _context.Bookings.Add(booking);
+            await _context.SaveChangesAsync();
+
+            _context.ActivityLogs.Add(new ActivityLog
+            {
+                UserId = userId,
+                Action = $"Submitted booking request {booking.Id}",
+                ActivityType = ActivityType.BookingCreated,
+                CreatedAt = DateTime.Now
+            });
+
+            _context.Notifications.Add(new Notification
+            {
+                UserId = property.HostId,
+                Title = $"New booking request {booking.Id} for property {property.Id}",
+                Type = NotificationType.BookingUpdate,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            TempData["Success"] = $"Booking request {booking.Id} was submitted. Awaiting Host approval.";
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Book([Bind("PropertyId,CheckInDate,CheckOutDate,NumberOfTravelers")]CreateBookingViewModel model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var property = await _context.HostProperties
+                .AsNoTracking()
+                .FirstOrDefaultAsync(property =>
+                    property.Id == model.PropertyId &&
+                    property.IsActive &&
+                    property.HostId != userId &&
+                    _context.HostApplications.Any(application =>
+                        application.PropertyId == property.Id &&
+                        application.ApplicationUserId == property.HostId &&
+                        application.Status == ApplicationStatus.Approved));
+
+            if (property == null)
+            {
+                return NotFound();
+            }
+
+            var cleaningFee = _configuration.GetValue<decimal?>("BookingFees:CleaningFee");
+
+            var serviceFee = _configuration.GetValue<decimal?>("BookingFees:ServiceFee");
+
+            if (!cleaningFee.HasValue || !serviceFee.HasValue || cleaningFee.Value < 0 || serviceFee.Value < 0)
+            {
+                throw new InvalidOperationException("Configure valid, non-negative booking fees in appsettings.json.");
+            }
+
+            // Prices from server-side configuration to prevent tampering.
+            model.PropertyTitle = property.Title;
+            model.PricePerNight = property.PricePerNight;
+            model.CleaningFee = cleaningFee.Value;
+            model.ServiceFee = serviceFee.Value;
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            if (model.TotalPrice > 999999999.99m)
+            {
+                ModelState.AddModelError(string.Empty, "The total exceeds the supported booking amount. Select a shorter stay.");
+
+                return View(model);
+            }
+
+            return View("ReviewBooking", model);
         }
 
         [HttpGet]

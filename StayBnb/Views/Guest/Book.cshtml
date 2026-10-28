@@ -1,0 +1,83 @@
+﻿@model StayBnb.ViewModels.CreateBookingViewModel
+
+@{
+    ViewData["Title"] = "Book Property";
+}
+
+<h1>Book @Model.PropertyTitle</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-controller="Guest" asp-action="Book" method="post">
+
+            <input asp-for="PropertyId" type="hidden" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+
+            <div class="mb-3">
+                <label asp-for="CheckInDate" class="form-label"></label>
+
+                <input asp-for="CheckInDate" class="form-control" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+
+                <span asp-validation-for="CheckInDate" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="CheckOutDate" class="form-label"></label>
+
+                <input asp-for="CheckOutDate" class="form-control" min="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" />
+
+                <span asp-validation-for="CheckOutDate" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="NumberOfTravelers" class="form-label"></label>
+
+                <input asp-for="NumberOfTravelers" class="form-control" type="number" min="1" step="1" />
+
+                <span asp-validation-for="NumberOfTravelers" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                Review booking
+            </button>
+
+            <a asp-controller="Guest" asp-action="PropertyDetails" asp-route-id="@Model.PropertyId" class="btn btn-outline-secondary">
+                Cancel
+            </a>
+        </form>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h4">Price information</h2>
+
+                <dl class="row">
+                    <dt class="col-7">Per night</dt>
+                    <dd class="col-5">
+                        R @Model.PricePerNight.ToString("F2")
+                    </dd>
+
+                    <dt class="col-7">Cleaning fee</dt>
+                    <dd class="col-5">
+                        R @Model.CleaningFee.ToString("F2")
+                    </dd>
+
+                    <dt class="col-7">Service fee</dt>
+                    <dd class="col-5">
+                        R @Model.ServiceFee.ToString("F2")
+                    </dd>
+                </dl>
+
+                <p class="mb-0">
+                    Cleaning and service fees are charged once per booking.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

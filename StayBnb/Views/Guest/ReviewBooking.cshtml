@@ -1,0 +1,95 @@
+﻿@model StayBnb.ViewModels.CreateBookingViewModel
+
+@{
+    ViewData["Title"] = "Review Booking";
+}
+
+<h1>Review your booking</h1>
+
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
+
+<h2 class="h4">@Model.PropertyTitle</h2>
+
+<dl class="row">
+    <dt class="col-sm-4">Check-in</dt>
+    <dd class="col-sm-8">
+        @Model.CheckInDate?.ToString("dd MMM yyyy")
+    </dd>
+
+    <dt class="col-sm-4">Check-out</dt>
+    <dd class="col-sm-8">
+        @Model.CheckOutDate?.ToString("dd MMM yyyy")
+    </dd>
+
+    <dt class="col-sm-4">Travelers</dt>
+    <dd class="col-sm-8">
+        @Model.NumberOfTravelers
+    </dd>
+
+    <dt class="col-sm-4">Nights</dt>
+    <dd class="col-sm-8">
+        @Model.Nights
+    </dd>
+</dl>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h2 class="h4">Price breakdown</h2>
+
+        <table class="table">
+            <tbody>
+                <tr>
+                    <th scope="row">
+                        R @Model.PricePerNight.ToString("F2")
+                        × @Model.Nights nights
+                    </th>
+                    <td>
+                        R @Model.AccommodationTotal.ToString("F2")
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Cleaning fee</th>
+                    <td>R @Model.CleaningFee.ToString("F2")</td>
+                </tr>
+                <tr>
+                    <th scope="row">Service fee</th>
+                    <td>R @Model.ServiceFee.ToString("F2")</td>
+                </tr>
+                <tr>
+                    <th scope="row">Total</th>
+                    <td>
+                        <strong>
+                            R @Model.TotalPrice.ToString("F2")
+                        </strong>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p class="mb-0">
+            Submitting sends a request to the Host.
+            Your stay is only confirmed after the Host approves it.
+        </p>
+    </div>
+</div>
+
+<form asp-controller="Guest" asp-action="SubmitBooking" method="post" class="mb-3">
+    <input asp-for="PropertyId" type="hidden" />
+    <input asp-for="CheckInDate" type="hidden" asp-format="{0:yyyy-MM-dd}" />
+    <input asp-for="CheckOutDate" type="hidden" asp-format="{0:yyyy-MM-dd}" />
+    <input asp-for="NumberOfTravelers" type="hidden" />
+
+    <input type="hidden" name="quotedTotal" value="@Model.TotalPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+
+    <button type="submit" class="btn btn-primary">
+        Submit booking request
+    </button>
+</form>
+
+<a asp-controller="Guest" asp-action="Book" asp-route-id="@Model.PropertyId" class="btn btn-outline-secondary">
+    Start a new quote
+</a>
+
+<a asp-controller="Guest" asp-action="PropertyDetails" asp-route-id="@Model.PropertyId" class="btn btn-outline-secondary">
+    Back to property
+</a>
