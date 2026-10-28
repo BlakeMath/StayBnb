@@ -6,6 +6,13 @@
 
 <h1>Host Dashboard</h1>
 
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="alert">
+        @success
+    </div>
+}
+
 <p>Welcome, @User.Identity?.Name.</p>
 
 <h2 class="h4">My approved properties</h2>
@@ -23,6 +30,7 @@ else
                     <th>Property</th>
                     <th>Address</th>
                     <th>Price per night</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,6 +40,11 @@ else
                         <td>@property.Title</td>
                         <td>@property.Address</td>
                         <td>R @property.PricePerNight.ToString("F2")</td>
+                        <td>
+                            <a asp-controller="Host" asp-action="Edit" asp-route-id="@property.Id" class="btn btn-sm btn-primary">
+                                Edit
+                            </a>
+                        </td>
                     </tr>
                 }
             </tbody>
