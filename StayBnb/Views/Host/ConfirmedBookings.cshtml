@@ -58,9 +58,21 @@ else
                             @if (booking.Status == BookingStatus.Approved)
                             {
                                 <form asp-controller="Host" asp-action="MarkArrived" method="post">
-                                    <input type="hidden" name="bookingId" value="@booking.BookingId"/>
+                                    <input type="hidden" name="bookingId" value="@booking.BookingId" />
+
                                     <button type="submit" class="btn btn-sm btn-success">
                                         Mark arrived
+                                    </button>
+                                </form>
+                            }
+                            else if (booking.Status == BookingStatus.CheckedIn)
+                            {
+                                <form asp-controller="Host" asp-action="MarkDeparted" method="post">
+
+                                    <input type="hidden" name="bookingId" value="@booking.BookingId" />
+
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        Mark departed
                                     </button>
                                 </form>
                             }

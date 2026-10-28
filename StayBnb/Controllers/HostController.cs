@@ -749,5 +749,57 @@ namespace StayBnb.Controllers
 
             return RedirectToAction(nameof(ConfirmedBookings));
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarkDeparted(int bookingId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            var booking = await _context.Bookings
+                .FirstOrDefaultAsync(booking =>
+                    booking.Id == bookingId &&
+                    booking.Status == BookingStatus.CheckedIn &&
+                    _context.HostProperties.Any(property =>
+                        property.Id == booking.PropertyId &&
+                        property.HostId == userId));
+
+            if (booking == null)
+            {
+                return NotFound();
+            }
+
+            booking.Status = BookingStatus.Completed;
+
+            _context.ActivityLogs.Add(new ActivityLog
+            {
+                UserId = userId,
+                Action = $"Marked booking {booking.Id} as Completed.",
+                ActivityType = ActivityType.BookingStatusChanged,
+                CreatedAt = DateTime.Now
+            });
+
+            _context.Notifications.Add(new Notification
+            {
+                UserId = booking.GuestId,
+                Title = $"Stay completed for booking {booking.Id}.",
+                Type = NotificationType.BookingUpdate,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            TempData["Success"] = "The Guest's stay has been completed.";
+
+            return RedirectToAction(nameof(ConfirmedBookings));
+        }
     }
 }
