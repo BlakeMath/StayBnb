@@ -505,6 +505,9 @@ namespace StayBnb.Data.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<decimal>("PricePerNight")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");

@@ -42,6 +42,51 @@ namespace StayBnb.Controllers
             return View(properties);
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetActive(int id, bool isActive)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var property = await _context.HostProperties
+                .FirstOrDefaultAsync(property =>
+                    property.Id == id &&
+                    property.HostId == userId &&
+                    _context.HostApplications.Any(application =>
+                        application.PropertyId == property.Id &&
+                        application.ApplicationUserId == userId &&
+                        application.Status == ApplicationStatus.Approved));
+
+            if (property == null)
+            {
+                return NotFound();
+            }
+
+            if (property.IsActive != isActive)
+            {
+                property.IsActive = isActive;
+
+                _context.ActivityLogs.Add(new ActivityLog
+                {
+                    UserId = userId,
+                    Action = $"Property {property.Id} " + (isActive ? "activated" : "deactivated"),
+                    ActivityType = ActivityType.PropertyUpdated,
+                    CreatedAt = DateTime.Now
+                });
+
+                await _context.SaveChangesAsync();
+            }
+
+            TempData["Success"] = isActive ? "Your property is now active." : "Your property is now inactive.";
+
+            return RedirectToAction(nameof(Index));
+        }
+
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {

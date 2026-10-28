@@ -30,6 +30,7 @@ else
                     <th>Property</th>
                     <th>Address</th>
                     <th>Price per night</th>
+                    <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -41,9 +42,22 @@ else
                         <td>@property.Address</td>
                         <td>R @property.PricePerNight.ToString("F2")</td>
                         <td>
+                            @(property.IsActive ? "Active" : "Inactive")
+                        </td>
+                        <td>
                             <a asp-controller="Host" asp-action="Edit" asp-route-id="@property.Id" class="btn btn-sm btn-primary">
                                 Edit
                             </a>
+
+                            <form asp-controller="Host" asp-action="SetActive" method="post" class="d-inline">
+                                <input type="hidden" name="id" value="@property.Id" />
+
+                                <input type="hidden" name="isActive" value="@(property.IsActive ? "false" : "true")" />
+
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                    @(property.IsActive ? "Deactivate" : "Activate")
+                                </button>
+                            </form>
                         </td>
                     </tr>
                 }

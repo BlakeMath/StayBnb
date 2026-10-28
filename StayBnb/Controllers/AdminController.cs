@@ -126,6 +126,7 @@ namespace StayBnb.Controllers
                     });
                 }
 
+                property.IsActive = true;
                 application.Status = ApplicationStatus.Approved;
             }
             else
