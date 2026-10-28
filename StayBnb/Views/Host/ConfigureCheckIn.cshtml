@@ -1,0 +1,68 @@
+﻿@model StayBnb.ViewModels.CheckInProcessViewModel
+
+@{
+    ViewData["Title"] = "Configure Check-in";
+}
+
+<h1>Configure Check-in</h1>
+
+<h2 class="h4">@Model.PropertyTitle</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-controller="Host" asp-action="ConfigureCheckIn" method="post">
+
+            <input asp-for="PropertyId" type="hidden" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title"
+                      class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Instructions" class="form-label"></label>
+
+                <textarea asp-for="Instructions" class="form-control" rows="7"></textarea>
+
+                <div class="form-text">
+                    Enter one instruction per line.
+                </div>
+
+                <span asp-validation-for="Instructions" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="RequiredDocumentType" class="form-label"></label>
+
+                <select asp-for="RequiredDocumentType" class="form-select">
+                    <option value="Either">ID or passport</option>
+                    <option value="ID">ID document only</option>
+                    <option value="Passport">Passport only</option>
+                </select>
+
+                <span asp-validation-for="RequiredDocumentType" class="text-danger"></span>
+            </div>
+
+            <p class="text-muted">
+                You can edit these instructions until a Guest
+                starts check-in using them.
+            </p>
+
+            <button type="submit" class="btn btn-primary">
+                Save instructions
+            </button>
+
+            <a asp-controller="Host" asp-action="Index" class="btn btn-outline-secondary">
+                Cancel
+            </a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

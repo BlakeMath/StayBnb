@@ -19,6 +19,9 @@
     <a asp-controller="Host" asp-action="BookingRequests" class="btn btn-primary">
         Booking Requests
     </a>
+    <a asp-controller="Host" asp-action="ConfirmedBookings" class ="btn btn-outline-primary">
+        Confirmed Bookings
+    </a>
 </p>
 
 <h2 class="h4">My approved properties</h2>
@@ -53,6 +56,10 @@ else
                         <td>
                             <a asp-controller="Host" asp-action="Edit" asp-route-id="@property.Id" class="btn btn-sm btn-primary">
                                 Edit
+                            </a>
+
+                            <a asp-controller="Host" asp-action="ConfigureCheckIn" asp-route-id="@property.Id" class="btn btn-sm btn-outline-primary">
+                                Check-in instructions
                             </a>
 
                             <form asp-controller="Host" asp-action="SetActive" method="post" class="d-inline">

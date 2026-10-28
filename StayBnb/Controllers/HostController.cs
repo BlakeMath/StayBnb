@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using StayBnb.Data;
 using StayBnb.Models;
 using StayBnb.ViewModels;
+using System.Text.Json;
 
 namespace StayBnb.Controllers
 {
@@ -69,12 +70,50 @@ namespace StayBnb.Controllers
                     CheckInDate = booking.CheckInDate,
                     CheckOutDate = booking.CheckOutDate,
                     NumberOfTravelers = booking.NumberOfTravelers,
-                    TotalPrice = booking.TotalPrice
+                    TotalPrice = booking.TotalPrice,
+                    Status = booking.Status
                 })
                 .ToListAsync();
 
             return View(requests);
         }
+
+        [HttpGet]
+        public async Task<IActionResult> ConfirmedBookings()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var bookings = await (
+                from booking in _context.Bookings
+                join property in _context.HostProperties
+                    on booking.PropertyId equals property.Id
+                join guest in _context.Users
+                    on booking.GuestId equals guest.Id
+                where property.HostId == userId &&
+                      (booking.Status == BookingStatus.Approved ||
+                       booking.Status == BookingStatus.CheckedIn ||
+                       booking.Status == BookingStatus.Completed)
+                orderby booking.CheckInDate, booking.Id
+                select new HostBookingListViewModel
+                {
+                    BookingId = booking.Id,
+                    PropertyTitle = property.Title,
+                    GuestEmail = guest.Email ?? string.Empty,
+                    CheckInDate = booking.CheckInDate,
+                    CheckOutDate = booking.CheckOutDate,
+                    NumberOfTravelers = booking.NumberOfTravelers,
+                    TotalPrice = booking.TotalPrice,
+                    Status = booking.Status
+                })
+                .ToListAsync();
+
+            return View(bookings);
+        } 
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -312,6 +351,152 @@ namespace StayBnb.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Your property was updated.";
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ConfigureCheckIn(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var property = await _context.HostProperties
+                .AsNoTracking()
+                .FirstOrDefaultAsync(property =>
+                    property.Id == id &&
+                    property.HostId == userId &&
+                    _context.HostApplications.Any(application =>
+                        application.PropertyId == property.Id &&
+                        application.ApplicationUserId == userId &&
+                        application.Status == ApplicationStatus.Approved));
+
+            if (property == null)
+            {
+                return NotFound();
+            }
+
+            var process = await _context.CheckInProcesses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(process => process.PropertyId == id);
+
+            var model = new CheckInProcessViewModel
+            {
+                PropertyId = property.Id,
+                PropertyTitle = property.Title
+            };
+
+            if (process != null)
+            {
+                var instructions =JsonSerializer.Deserialize<CheckInInstructions>(process.StepsJson)
+                    ?? throw new InvalidOperationException("The saved check-in instructions are invalid.");
+
+                model.Title = process.Title;
+                model.Instructions = string.Join(Environment.NewLine, instructions.Steps);
+                model.RequiredDocumentType = instructions.RequiredDocumentType;
+            }
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfigureCheckIn([Bind("PropertyId,Title,Instructions,RequiredDocumentType")]CheckInProcessViewModel model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            var property = await _context.HostProperties
+                .AsNoTracking()
+                .FirstOrDefaultAsync(property =>
+                    property.Id == model.PropertyId &&
+                    property.HostId == userId &&
+                    _context.HostApplications.Any(application =>
+                        application.PropertyId == property.Id &&
+                        application.ApplicationUserId == userId &&
+                        application.Status == ApplicationStatus.Approved));
+
+            if (property == null)
+            {
+                return NotFound();
+            }
+
+            model.PropertyTitle = property.Title;
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var instructions = new CheckInInstructions
+            {
+                Steps = model.Instructions.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
+
+                RequiredDocumentType = model.RequiredDocumentType
+            };
+
+            if (instructions.Steps.Count == 0)
+            {
+                ModelState.AddModelError(nameof(model.Instructions),"Enter at least one instruction.");
+
+                return View(model);
+            }
+
+            var stepsJson = JsonSerializer.Serialize(instructions);
+
+            if (stepsJson.Length > 10000)
+            {
+                ModelState.AddModelError(nameof(model.Instructions), "The saved instructions are too long. Shorten them.");
+
+                return View(model);
+            }
+
+            var process = await _context.CheckInProcesses.FirstOrDefaultAsync(process => process.PropertyId == property.Id);
+
+            if (process != null &&
+                await _context.GuestCheckIns.AnyAsync(checkIn => checkIn.CheckInProcessId == process.Id))
+            {
+                ModelState.AddModelError(string.Empty, "These instructions are already being used by a Guest check-in and cannot be changed.");
+
+                return View(model);
+            }
+
+            if (process == null)
+            {
+                process = new CheckInProcess
+                {
+                    PropertyId = property.Id,
+                    CreatedAt = DateTime.Now
+                };
+
+                _context.CheckInProcesses.Add(process);
+            }
+
+            process.Title = model.Title.Trim();
+            process.StepsJson = stepsJson;
+
+            _context.ActivityLogs.Add(new ActivityLog
+            {
+                UserId = userId,
+                Action = $"Configured check-in for property {property.Id}",
+                ActivityType = ActivityType.CheckInUpdated,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            TempData["Success"] = "Check-in instructions saved.";
 
             return RedirectToAction(nameof(Index));
         }

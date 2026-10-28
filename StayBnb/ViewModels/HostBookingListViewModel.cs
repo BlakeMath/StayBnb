@@ -1,4 +1,6 @@
-﻿namespace StayBnb.ViewModels
+﻿using StayBnb.Models;
+
+namespace StayBnb.ViewModels
 {
     public class HostBookingListViewModel
     {
@@ -15,5 +17,7 @@
         public int NumberOfTravelers { get; set; }
 
         public decimal TotalPrice { get; set; }
+
+        public BookingStatus Status { get; set; }
     }
 }
