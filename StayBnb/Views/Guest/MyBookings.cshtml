@@ -1,0 +1,65 @@
+﻿@model List<StayBnb.ViewModels.GuestBookingListViewModel>
+
+@{
+    ViewData["Title"] = "My Bookings";
+}
+
+<h1>My Bookings</h1>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="alert">
+        @success
+    </div>
+}
+
+<p>Pending requests are awaiting the Host's decision.</p>
+
+@if (Model.Count == 0)
+{
+    <p>You have not submitted any booking requests yet.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Booking</th>
+                    <th>Property</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Travelers</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var booking in Model)
+                {
+                    <tr>
+                        <td>@booking.BookingId</td>
+                        <td>@booking.PropertyTitle</td>
+                        <td>
+                            @booking.CheckInDate.ToString("dd MMM yyyy")
+                        </td>
+                        <td>
+                            @booking.CheckOutDate.ToString("dd MMM yyyy")
+                        </td>
+                        <td>@booking.NumberOfTravelers</td>
+                        <td>R @booking.TotalPrice.ToString("F2")</td>
+                        <td>@booking.Status</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<a asp-controller="Guest" asp-action="Properties" class="btn btn-primary">
+    Browse Properties
+</a>
+
+<a asp-controller="Guest" asp-action="Index" class="btn btn-outline-secondary">
+    Back to dashboard
+</a>

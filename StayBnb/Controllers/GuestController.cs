@@ -29,6 +29,37 @@ namespace StayBnb.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> MyBookings()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var bookings = await (
+                from booking in _context.Bookings
+                join property in _context.HostProperties
+                    on booking.PropertyId equals property.Id
+                where booking.GuestId == userId
+                orderby booking.Id descending
+                select new GuestBookingListViewModel
+                {
+                    BookingId = booking.Id,
+                    PropertyTitle = property.Title,
+                    CheckInDate = booking.CheckInDate,
+                    CheckOutDate = booking.CheckOutDate,
+                    NumberOfTravelers = booking.NumberOfTravelers,
+                    TotalPrice = booking.TotalPrice,
+                    Status = booking.Status
+                })
+                .ToListAsync();
+
+            return View(bookings);
+        }
+
+        [HttpGet]
         public async Task<IActionResult> Properties(string? search)
         {
             var query = _context.HostProperties
@@ -289,7 +320,7 @@ namespace StayBnb.Controllers
 
             TempData["Success"] = $"Booking request {booking.Id} was submitted. Awaiting Host approval.";
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(MyBookings));
         }
 
         [HttpPost]
