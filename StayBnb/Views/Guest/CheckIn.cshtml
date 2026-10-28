@@ -1,0 +1,156 @@
+﻿@model StayBnb.ViewModels.GuestCheckInViewModel
+@using StayBnb.Models
+
+@{
+    ViewData["Title"] = "Check-in Instructions";
+}
+
+<h1>Check-in Instructions</h1>
+
+<h2 class="h4">@Model.PropertyTitle</h2>
+
+<p>Booking reference: @Model.BookingId</p>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger" role="alert">
+        @error
+    </div>
+}
+
+@if (!Model.InstructionsAvailable)
+{
+    <div class="alert alert-info" role="alert">
+        The Host has not provided check-in instructions yet.
+        Please check again later.
+    </div>
+}
+else
+{
+    <h3 class="h5">@Model.Title</h3>
+
+    <ol>
+        @foreach (var step in Model.Steps)
+        {
+            <li class="mb-2">@step</li>
+        }
+    </ol>
+
+    <div class="card my-4">
+        <div class="card-body">
+            <h3 class="h5">Required document</h3>
+
+            @if (Model.RequiredDocumentType == "ID")
+            {
+                <p class="mb-0">
+                    Provide an ID document for the Host to verify.
+                </p>
+            }
+            else if (Model.RequiredDocumentType == "Passport")
+            {
+                <p class="mb-0">
+                    Provide a passport for the Host to verify.
+                </p>
+            }
+            else
+            {
+                <p class="mb-0">
+                    Provide either an ID document or a passport
+                    for the Host to verify.
+                </p>
+            }
+        </div>
+    </div>
+}
+@if (Model.InstructionsAvailable)
+{
+    @if (Model.Status == null)
+    {
+        <form asp-controller="Guest" asp-action="StartCheckIn" method="post" class="mb-3">
+
+            <input type="hidden" name="bookingId" value="@Model.BookingId" />
+
+            <button type="submit" class="btn btn-primary">
+                Start check-in
+            </button>
+        </form>
+    }
+    else
+    {
+        <div class="alert alert-info" role="alert">
+            <p class="mb-0">
+                Check-in status: <strong>@Model.Status</strong>
+            </p>
+
+            @if (Model.Status == CheckInStatus.Pending)
+            {
+                <p class="mb-0">
+                    Your check-in has started.
+                    Your required document has not been submitted yet.
+                </p>
+            }
+        </div>
+    }
+}
+
+@if (Model.InstructionsAvailable && Model.Status == CheckInStatus.Pending)
+{
+    <h3 class="h5">Upload your document</h3>
+
+    <p>
+        Upload a clear JPG or PNG image, no larger than 5 MB.
+    </p>
+
+    <form asp-controller="Guest" asp-action="UploadCheckInDocument" method="post" enctype="multipart/form-data" class="mb-4">
+
+        <input type="hidden" name="bookingId" value="@Model.BookingId" />
+
+        <div class="mb-3">
+            <label for="documentType" class="form-label">
+                Document type
+            </label>
+
+            <select id="documentType" name="documentType" class="form-select" required>
+
+                @if (Model.RequiredDocumentType == "ID" || Model.RequiredDocumentType == "Either")
+                {
+                    <option value="ID">ID document</option>
+                }
+
+                @if (Model.RequiredDocumentType == "Passport" || Model.RequiredDocumentType == "Either")
+                {
+                    <option value="Passport">Passport</option>
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="document" class="form-label">
+                Document image
+            </label>
+
+            <input id="document"
+                   name="document"
+                   type="file"
+                   accept=".jpg,.jpeg,.png"
+                   class="form-control"
+                   required />
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Submit for verification
+        </button>
+    </form>
+}
+
+@if (Model.Status == CheckInStatus.Submitted)
+{
+    <div class="alert alert-success" role="alert">
+        Your document has been submitted.
+        Please wait for the Host to verify it.
+    </div>
+}
+
+<a asp-controller="Guest" asp-action="MyBookings" class="btn btn-outline-secondary">
+    Back to My Bookings
+</a>

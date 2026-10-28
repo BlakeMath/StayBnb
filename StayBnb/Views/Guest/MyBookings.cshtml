@@ -1,4 +1,5 @@
 ﻿@model List<StayBnb.ViewModels.GuestBookingListViewModel>
+@using StayBnb.Models
 
 @{
     ViewData["Title"] = "My Bookings";
@@ -32,6 +33,7 @@ else
                     <th>Travelers</th>
                     <th>Total</th>
                     <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -49,6 +51,14 @@ else
                         <td>@booking.NumberOfTravelers</td>
                         <td>R @booking.TotalPrice.ToString("F2")</td>
                         <td>@booking.Status</td>
+                        <td>
+                            @if (booking.Status == BookingStatus.Approved)
+                            {
+                                <a asp-controller="Guest" asp-action="CheckIn" asp-route-id="@booking.BookingId" class="btn btn-sm btn-primary">
+                                    Check-in
+                                </a>
+                            }
+                        </td>
                     </tr>
                 }
             </tbody>

@@ -6,6 +6,7 @@ using StayBnb.ViewModels;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Text.Json;
 
 namespace StayBnb.Controllers
 {
@@ -57,6 +58,300 @@ namespace StayBnb.Controllers
                 .ToListAsync();
 
             return View(bookings);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CheckIn(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var booking = await _context.Bookings
+                .AsNoTracking()
+                .FirstOrDefaultAsync(booking =>
+                    booking.Id == id &&
+                    booking.GuestId == userId &&
+                    booking.Status == BookingStatus.Approved);
+
+            if (booking == null)
+            {
+                return NotFound();
+            }
+
+            var property = await _context.HostProperties
+                .AsNoTracking()
+                .FirstOrDefaultAsync(property =>
+                    property.Id == booking.PropertyId);
+
+            if (property == null)
+            {
+                return NotFound();
+            }
+
+            var model = new GuestCheckInViewModel
+            {
+                BookingId = booking.Id,
+                PropertyTitle = property.Title
+            };
+
+            model.Status = await _context.GuestCheckIns
+                .AsNoTracking()
+                .Where(checkIn => checkIn.BookingId == booking.Id)
+                .Select(checkIn => (CheckInStatus?)checkIn.Status)
+                .FirstOrDefaultAsync();
+
+            var process = await _context.CheckInProcesses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(process =>
+                    process.PropertyId == property.Id);
+
+            if (process == null)
+            {
+                return View(model);
+            }
+
+            var instructions = JsonSerializer.Deserialize<CheckInInstructions>(process.StepsJson)
+                ?? throw new InvalidOperationException("The saved check-in instructions are invalid.");
+
+            model.Title = process.Title;
+            model.Steps = instructions.Steps;
+            model.RequiredDocumentType = instructions.RequiredDocumentType;
+            model.InstructionsAvailable = true;
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> StartCheckIn(int bookingId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            var booking = await _context.Bookings
+                .FirstOrDefaultAsync(booking =>
+                    booking.Id == bookingId &&
+                    booking.GuestId == userId &&
+                    booking.Status == BookingStatus.Approved);
+
+            if (booking == null)
+            {
+                return NotFound();
+            }
+
+            var existingCheckIn = await _context.GuestCheckIns.AnyAsync(checkIn => checkIn.BookingId == booking.Id);
+
+            if (existingCheckIn)
+            {
+                return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
+            }
+
+            var process = await _context.CheckInProcesses.FirstOrDefaultAsync(process => process.PropertyId == booking.PropertyId);
+
+            if (process == null)
+            {
+                TempData["Error"] = "The Host has not provided check-in instructions yet.";
+
+                return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
+            }
+
+            _context.GuestCheckIns.Add(new GuestCheckIn
+            {
+                BookingId = booking.Id,
+                CheckInProcessId = process.Id,
+                Status = CheckInStatus.Pending,
+                CreatedAt = DateTime.Now
+            });
+
+            _context.ActivityLogs.Add(new ActivityLog
+            {
+                UserId = userId,
+                Action = $"Started check-in for booking {booking.Id}.",
+                ActivityType = ActivityType.CheckInUpdated,
+                CreatedAt = DateTime.Now
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequestSizeLimit(6 * 1024 * 1024)]
+        public async Task<IActionResult> UploadCheckInDocument(int bookingId, string documentType, IFormFile? document)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            var booking = await _context.Bookings
+                .FirstOrDefaultAsync(booking =>
+                    booking.Id == bookingId &&
+                    booking.GuestId == userId &&
+                    booking.Status == BookingStatus.Approved);
+
+            if (booking == null)
+            {
+                return NotFound();
+            }
+
+            var checkIn = await _context.GuestCheckIns.FirstOrDefaultAsync(checkIn =>checkIn.BookingId == booking.Id);
+
+            if (checkIn == null)
+            {
+                TempData["Error"] = "Please start check-in first.";
+
+                return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
+            }
+
+            if (checkIn.Status != CheckInStatus.Pending)
+            {
+                TempData["Error"] ="This check-in has already been submitted.";
+
+                return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
+            }
+
+            var process = await _context.CheckInProcesses.SingleAsync(process =>process.Id == checkIn.CheckInProcessId);
+
+            var instructions =
+                JsonSerializer.Deserialize<CheckInInstructions>(process.StepsJson)
+                ?? throw new InvalidOperationException("The saved check-in instructions are invalid.");
+
+            bool validDocumentType = (documentType == "ID" || documentType == "Passport") &&
+                (instructions.RequiredDocumentType == "Either" ||
+                 instructions.RequiredDocumentType == documentType);
+
+            if (!validDocumentType)
+            {
+                TempData["Error"] = "Select the document type required by the Host.";
+
+                return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
+            }
+
+            if (document == null || document.Length == 0)
+            {
+                TempData["Error"] = "Please select a document.";
+
+                return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
+            }
+
+            if (document.Length > 5 * 1024 * 1024)
+            {
+                TempData["Error"] = "The document must be 5 MB or smaller.";
+
+                return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
+            }
+
+            var extension =Path.GetExtension(document.FileName).ToLowerInvariant();
+
+            if (extension != ".jpg" &&
+                extension != ".jpeg" &&
+                extension != ".png")
+            {
+                TempData["Error"] = "Please upload a JPG or PNG image.";
+
+                return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
+            }
+
+            // Check the file's contents, not only its extension.
+            using var buffer = new MemoryStream();
+            await document.CopyToAsync(buffer);
+            var bytes = buffer.ToArray();
+
+            bool isJpeg =
+                bytes.Length >= 3 &&
+                bytes[0] == 0xFF &&
+                bytes[1] == 0xD8 &&
+                bytes[2] == 0xFF;
+
+            byte[] pngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+
+            bool isPng = bytes.Length >= pngSignature.Length && bytes.Take(pngSignature.Length).SequenceEqual(pngSignature);
+
+            bool validImage = ((extension == ".jpg" || extension == ".jpeg") && isJpeg) || (extension == ".png" && isPng);
+
+            if (!validImage)
+            {
+                TempData["Error"] = "The file contents do not match a JPG or PNG image.";
+
+                return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
+            }
+
+            var property = await _context.HostProperties
+                .SingleAsync(property => property.Id == booking.PropertyId);
+
+            var folder = Path.Combine(_environment.ContentRootPath, "App_Data", "GuestDocuments");
+
+            Directory.CreateDirectory(folder);
+
+            // Store a generated name instead of the user's original filename.
+            var fileName = $"{Guid.NewGuid():N}{extension}";
+            var filePath = Path.Combine(folder, fileName);
+
+            try
+            {
+                await System.IO.File.WriteAllBytesAsync(filePath, bytes);
+
+                _context.GuestDocuments.Add(new GuestDocument
+                {
+                    GuestCheckInId = checkIn.Id,
+                    DocumentType = documentType,
+                    FileName = fileName,
+                    Status = DocumentStatus.Pending
+                });
+
+                checkIn.Status = CheckInStatus.Submitted;
+
+                _context.ActivityLogs.Add(new ActivityLog
+                {
+                    UserId = userId,
+                    Action = $"Submitted check-in for booking {booking.Id}.",
+                    ActivityType = ActivityType.CheckInUpdated,
+                    CreatedAt = DateTime.Now
+                });
+
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = property.HostId,
+                    Title = $"Check-in submitted for booking {booking.Id}.",
+                    Type = NotificationType.CheckInUpdate,
+                    CreatedAt = DateTime.Now
+                });
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                if (System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.Delete(filePath);
+                }
+
+                throw;
+            }
+
+            return RedirectToAction(
+                nameof(CheckIn), new { id = booking.Id });
         }
 
         [HttpGet]
