@@ -46,9 +46,12 @@ namespace StayBnb.Controllers
         }
 
         [HttpGet]
-        public IActionResult Send()
+        public IActionResult Send(string? recipientEmail)
         {
-            return View(new SendMessageViewModel());
+            return View(new SendMessageViewModel
+            {
+                RecipientEmail = recipientEmail ?? string.Empty
+            });
         }
 
         [HttpPost]

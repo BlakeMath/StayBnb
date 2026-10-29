@@ -14,7 +14,7 @@
 }
 
 <p>
-    <a asp-controller="Messages" asp-action="Send"class ="btn btn-primary">
+    <a asp-controller="Messages" asp-action="Send" class ="btn btn-primary">
         Send message
     </a>
 </p>
@@ -36,6 +36,12 @@ else
                 <small class="text-muted">
                     @message.Timestamp.ToString("dd MMM yyyy HH:mm")
                 </small>
+                <div class="mt-2">
+                    <a asp-controller="Messages" asp-action="Send" asp-route-recipientEmail="@message.SenderEmail" class="btn btn-sm btn-outline-primary">
+                        Reply
+                    </a>
+                </div>
+
             </div>
         }
     </div>
