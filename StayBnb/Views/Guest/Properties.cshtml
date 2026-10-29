@@ -38,7 +38,7 @@ else
                 <div class="card h-100">
                     @if (!string.IsNullOrWhiteSpace(property.ImageUrl))
                     {
-                        <img src="@Url.Content(property.ImageUrl)" alt="Property image for @property.Title" class="card-img-top" style="height: 220px; object-fit: cover;" />
+                        <img src="@Url.Content(property.ImageUrl)" alt="Property image for @property.Title" class="card-img-top" />
                     }
                     else
                     {

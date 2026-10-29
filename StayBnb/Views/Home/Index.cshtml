@@ -1,8 +1,96 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Welcome";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="home-hero">
+    <span class="home-label">WELCOME TO STAYBNB</span>
+
+    <h1>Find a place.<br />Feel at home.</h1>
+
+    <p class="home-intro">
+        Discover your next stay, connect with your Host,
+        and manage your booking in one place.
+    </p>
+
+    <div class="d-flex flex-wrap gap-2">
+        @if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
+        {
+            <a asp-controller="Admin" asp-action="Index" class="btn btn-primary">
+                Open Admin dashboard
+            </a>
+        }
+        else if (User.IsInRole("Host"))
+        {
+            <a asp-controller="Host" asp-action="Index" class="btn btn-primary">
+                Manage your properties
+            </a>
+        }
+        else if (User.IsInRole("Guest"))
+        {
+            <a asp-controller="Guest" asp-action="Properties" class="btn btn-primary">
+                Explore stays
+            </a>
+
+            <a asp-controller="Guest" asp-action="MyBookings" class="btn btn-outline-secondary">
+                My bookings
+            </a>
+        }
+        else if (User.Identity?.IsAuthenticated != true)
+        {
+            <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-primary">
+                Get started
+            </a>
+
+            <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-outline-secondary">
+                Log in
+            </a>
+        }
+    </div>
+</section>
+
+<section class="my-5" aria-labelledby="how-it-works">
+    <h2 id="how-it-works" class="h3 mb-4">
+        Your next stay, in three steps
+    </h2>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <span class="home-step">01</span>
+                    <h3 class="h5 mt-3">Find your stay</h3>
+                    <p class="text-muted mb-0">
+                        Browse properties, explore the photos,
+                        and find a location that suits you.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <span class="home-step">02</span>
+                    <h3 class="h5 mt-3">Request your booking</h3>
+                    <p class="text-muted mb-0">
+                        Choose your dates and travelers, review
+                        the total, and send your request to the Host.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <span class="home-step">03</span>
+                    <h3 class="h5 mt-3">Get ready to arrive</h3>
+                    <p class="text-muted mb-0">
+                        Once approved, follow your Host’s instructions
+                        and submit your check-in document for verification.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
