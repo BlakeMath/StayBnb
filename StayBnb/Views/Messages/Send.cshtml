@@ -1,0 +1,35 @@
+﻿@model StayBnb.ViewModels.SendMessageViewModel
+
+@{
+    ViewData["Title"] = "Send Message";
+}
+
+<h1>Send Message</h1>
+
+<form asp-controller="Messages" asp-action="Send" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="RecipientEmail" class="form-label"></label>
+        <input asp-for="RecipientEmail" type="email" "class="form-control" />
+        <span asp-validation-for="RecipientEmail" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Content" class="form-label"></label>
+        <textarea asp-for="Content" rows="5" lass="form-control"></textarea>
+        <span asp-validation-for="Content" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        Send message
+    </button>
+
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        Back to inbox
+    </a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

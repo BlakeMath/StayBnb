@@ -11,6 +11,11 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link text-dark" asp-area="" asp-controller="Messages" asp-action="Index">
+                Inbox
+        </a>
+    </li>
+    <li class="nav-item">
         <a  class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">
             Hello @User.Identity?.Name!
          </a>
@@ -24,10 +29,14 @@
 else
 {
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
+        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">
+            Register
+        </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
+        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">
+            Login
+        </a>
     </li>
 }
 </ul>

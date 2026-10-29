@@ -1,0 +1,42 @@
+﻿@model List<StayBnb.ViewModels.InboxMessageViewModel>
+
+@{
+    ViewData["Title"] = "My Inbox";
+}
+
+<h1>My Inbox</h1>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success" role="alert">
+        @success
+    </div>
+}
+
+<p>
+    <a asp-controller="Messages" asp-action="Send"class ="btn btn-primary">
+        Send message
+    </a>
+</p>
+
+@if (Model.Count == 0)
+{
+    <p>You have no messages yet.</p>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var message in Model)
+        {
+            <div class="list-group-item">
+                <h2 class="h6">From: @message.SenderEmail</h2>
+
+                <p style="white-space: pre-wrap">@message.Content</p>
+
+                <small class="text-muted">
+                    @message.Timestamp.ToString("dd MMM yyyy HH:mm")
+                </small>
+            </div>
+        }
+    </div>
+}
