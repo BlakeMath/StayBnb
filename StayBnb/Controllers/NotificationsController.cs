@@ -16,6 +16,33 @@ namespace StayBnb.Controllers
             _context = context;
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarkAsRead(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var notification = await _context.Notifications.FirstOrDefaultAsync(notification =>
+                    notification.Id == id &&
+                    notification.UserId == userId);
+
+            if (notification == null)
+            {
+                return NotFound();
+            }
+
+            notification.IsRead = true;
+
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
+
         [HttpGet]
         public async Task<IActionResult> Index()
         {

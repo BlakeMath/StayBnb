@@ -19,5 +19,7 @@ namespace StayBnb.Models
         public NotificationType Type { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public bool IsRead { get; set; }
     }
 }

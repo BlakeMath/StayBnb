@@ -21,6 +21,24 @@ else
                 <small class="text-muted">
                     @notification.CreatedAt.ToString("dd MMM yyyy HH:mm")
                 </small>
+
+                @if (notification.IsRead)
+                {
+                    <span class="badge bg-secondary ms-2">Read</span>
+                }
+                else
+                {
+                    <span class="badge bg-primary ms-2">Unread</span>
+
+                    <form asp-controller="Notifications" asp-action="MarkAsRead" method="post" class="mt-2">
+
+                        <input type="hidden" name="id" value="@notification.Id" />
+
+                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                            Mark as read
+                        </button>
+                    </form>
+                }
             </div>
         }
     </div>
