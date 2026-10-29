@@ -1,23 +1,16 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Extensions.Logging;
 using StayBnb.Data;
+using System.ComponentModel.DataAnnotations;
+using System.Text;
+using System.Text.Encodings.Web;
 
 namespace StayBnb.Areas.Identity.Pages.Account;
 
@@ -160,7 +153,20 @@ public class RegisterModel : PageModel
                 _context.ApplicationUsers.Add(profile);
                 await _context.SaveChangesAsync();
 
-                // Keep the account, role assignment, and profile.
+                _context.ApplicationUsers.Add(profile);
+                await _context.SaveChangesAsync();
+
+                _context.ActivityLogs.Add(new StayBnb.Models.ActivityLog
+                {
+                    UserId = user.Id,
+                    Action = "Guest role assigned during registration.",
+                    ActivityType = StayBnb.Models.ActivityType.RoleChanged,
+                    CreatedAt = DateTime.Now
+                });
+
+                await _context.SaveChangesAsync();
+
+                // Keep the account, role assignment, profile and activity log.
                 await transaction.CommitAsync();
 
                 _logger.LogInformation("User created a new account with password.");
@@ -168,14 +174,9 @@ public class RegisterModel : PageModel
                 var userId = await _userManager.GetUserIdAsync(user);
                 var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                 code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-                var callbackUrl = Url.Page(
-                    "/Account/ConfirmEmail",
-                    pageHandler: null,
-                    values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
-                    protocol: Request.Scheme)!;
+                var callbackUrl = Url.Page("/Account/ConfirmEmail", pageHandler: null, values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl }, protocol: Request.Scheme)!;
 
-                await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                    $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+                await _emailSender.SendEmailAsync(Input.Email, "Confirm your email", $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
 
                 if (_userManager.Options.SignIn.RequireConfirmedAccount)
                 {

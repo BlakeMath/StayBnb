@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using StayBnb.Data;
 using StayBnb.Models;
 using StayBnb.ViewModels;
-using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace StayBnb.Controllers
@@ -70,9 +70,7 @@ namespace StayBnb.Controllers
                 return Challenge();
             }
 
-            var booking = await _context.Bookings
-                .AsNoTracking()
-                .FirstOrDefaultAsync(booking =>
+            var booking = await _context.Bookings.AsNoTracking().FirstOrDefaultAsync(booking =>
                     booking.Id == id &&
                     booking.GuestId == userId &&
                     booking.Status == BookingStatus.Approved);
@@ -82,9 +80,7 @@ namespace StayBnb.Controllers
                 return NotFound();
             }
 
-            var property = await _context.HostProperties
-                .AsNoTracking()
-                .FirstOrDefaultAsync(property =>
+            var property = await _context.HostProperties.AsNoTracking().FirstOrDefaultAsync(property =>
                     property.Id == booking.PropertyId);
 
             if (property == null)
@@ -104,9 +100,7 @@ namespace StayBnb.Controllers
                 .Select(checkIn => (CheckInStatus?)checkIn.Status)
                 .FirstOrDefaultAsync();
 
-            var process = await _context.CheckInProcesses
-                .AsNoTracking()
-                .FirstOrDefaultAsync(process =>
+            var process = await _context.CheckInProcesses.AsNoTracking().FirstOrDefaultAsync(process =>
                     process.PropertyId == property.Id);
 
             if (process == null)
@@ -114,8 +108,7 @@ namespace StayBnb.Controllers
                 return View(model);
             }
 
-            var instructions = JsonSerializer.Deserialize<CheckInInstructions>(process.StepsJson)
-                ?? throw new InvalidOperationException("The saved check-in instructions are invalid.");
+            var instructions = JsonSerializer.Deserialize<CheckInInstructions>(process.StepsJson) ?? throw new InvalidOperationException("The saved check-in instructions are invalid.");
 
             model.Title = process.Title;
             model.Steps = instructions.Steps;
@@ -136,11 +129,9 @@ namespace StayBnb.Controllers
                 return Challenge();
             }
 
-            await using var transaction =
-                await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
-            var booking = await _context.Bookings
-                .FirstOrDefaultAsync(booking =>
+            var booking = await _context.Bookings.FirstOrDefaultAsync(booking =>
                     booking.Id == bookingId &&
                     booking.GuestId == userId &&
                     booking.Status == BookingStatus.Approved);
@@ -200,11 +191,9 @@ namespace StayBnb.Controllers
                 return Challenge();
             }
 
-            await using var transaction =
-                await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
-            var booking = await _context.Bookings
-                .FirstOrDefaultAsync(booking =>
+            var booking = await _context.Bookings.FirstOrDefaultAsync(booking =>
                     booking.Id == bookingId &&
                     booking.GuestId == userId &&
                     booking.Status == BookingStatus.Approved);
@@ -214,7 +203,7 @@ namespace StayBnb.Controllers
                 return NotFound();
             }
 
-            var checkIn = await _context.GuestCheckIns.FirstOrDefaultAsync(checkIn =>checkIn.BookingId == booking.Id);
+            var checkIn = await _context.GuestCheckIns.FirstOrDefaultAsync(checkIn => checkIn.BookingId == booking.Id);
 
             if (checkIn == null)
             {
@@ -230,15 +219,11 @@ namespace StayBnb.Controllers
                 return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
             }
 
-            var process = await _context.CheckInProcesses.SingleAsync(process =>process.Id == checkIn.CheckInProcessId);
+            var process = await _context.CheckInProcesses.SingleAsync(process => process.Id == checkIn.CheckInProcessId);
 
-            var instructions =
-                JsonSerializer.Deserialize<CheckInInstructions>(process.StepsJson)
-                ?? throw new InvalidOperationException("The saved check-in instructions are invalid.");
+            var instructions = JsonSerializer.Deserialize<CheckInInstructions>(process.StepsJson) ?? throw new InvalidOperationException("The saved check-in instructions are invalid.");
 
-            bool validDocumentType = (documentType == "ID" || documentType == "Passport") &&
-                (instructions.RequiredDocumentType == "Either" ||
-                 instructions.RequiredDocumentType == documentType);
+            bool validDocumentType = (documentType == "ID" || documentType == "Passport") && (instructions.RequiredDocumentType == "Either" || instructions.RequiredDocumentType == documentType);
 
             if (!validDocumentType)
             {
@@ -261,11 +246,9 @@ namespace StayBnb.Controllers
                 return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
             }
 
-            var extension =Path.GetExtension(document.FileName).ToLowerInvariant();
+            var extension = Path.GetExtension(document.FileName).ToLowerInvariant();
 
-            if (extension != ".jpg" &&
-                extension != ".jpeg" &&
-                extension != ".png")
+            if (extension != ".jpg" && extension != ".jpeg" && extension != ".png")
             {
                 TempData["Error"] = "Please upload a JPG or PNG image.";
 
@@ -296,8 +279,7 @@ namespace StayBnb.Controllers
                 return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
             }
 
-            var property = await _context.HostProperties
-                .SingleAsync(property => property.Id == booking.PropertyId);
+            var property = await _context.HostProperties.SingleAsync(property => property.Id == booking.PropertyId);
 
             var folder = Path.Combine(_environment.ContentRootPath, "App_Data", "GuestDocuments");
 
@@ -350,16 +332,13 @@ namespace StayBnb.Controllers
                 throw;
             }
 
-            return RedirectToAction(
-                nameof(CheckIn), new { id = booking.Id });
+            return RedirectToAction(nameof(CheckIn), new { id = booking.Id });
         }
 
         [HttpGet]
         public async Task<IActionResult> Properties(string? search)
         {
-            var query = _context.HostProperties
-                .AsNoTracking()
-                .Where(property =>
+            var query = _context.HostProperties.AsNoTracking().Where(property =>
                     property.IsActive &&
                     _context.HostApplications.Any(application =>
                         application.PropertyId == property.Id &&
@@ -398,9 +377,7 @@ namespace StayBnb.Controllers
         [HttpGet]
         public async Task<IActionResult> PropertyDetails(int id)
         {
-            var property = await _context.HostProperties
-                .AsNoTracking()
-                .Where(property =>
+            var property = await _context.HostProperties.AsNoTracking().Where(property =>
                     property.Id == id &&
                     property.IsActive &&
                     _context.HostApplications.Any(application =>
@@ -440,9 +417,7 @@ namespace StayBnb.Controllers
                 return Challenge();
             }
 
-            var property = await _context.HostProperties
-                .AsNoTracking()
-                .FirstOrDefaultAsync(property =>
+            var property = await _context.HostProperties.AsNoTracking().FirstOrDefaultAsync(property =>
                     property.Id == id &&
                     property.IsActive &&
                     property.HostId != userId &&
@@ -458,8 +433,7 @@ namespace StayBnb.Controllers
 
             var cleaningFee = _configuration.GetValue<decimal?>("BookingFees:CleaningFee");
 
-            var serviceFee =
-                _configuration.GetValue<decimal?>("BookingFees:ServiceFee");
+            var serviceFee = _configuration.GetValue<decimal?>("BookingFees:ServiceFee");
 
             if (!cleaningFee.HasValue || !serviceFee.HasValue || cleaningFee.Value < 0 || serviceFee.Value < 0)
             {
@@ -496,9 +470,7 @@ namespace StayBnb.Controllers
 
             await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
-            var property = await _context.HostProperties
-                .AsNoTracking()
-                .FirstOrDefaultAsync(property =>
+            var property = await _context.HostProperties.AsNoTracking().FirstOrDefaultAsync(property =>
                     property.Id == model.PropertyId &&
                     property.IsActive &&
                     property.HostId != userId &&
@@ -534,13 +506,13 @@ namespace StayBnb.Controllers
 
             if (model.TotalPrice > 999999999.99m)
             {
-                ModelState.AddModelError( string.Empty, "The total exceeds the supported booking amount.");
+                ModelState.AddModelError(string.Empty, "The total exceeds the supported booking amount.");
 
                 return View("Book", model);
             }
 
             // Ask the Guest to review again if the price changed.
-            if (!decimal.TryParse( quotedTotal, NumberStyles.Number, CultureInfo.InvariantCulture, out var previousTotal) || previousTotal != model.TotalPrice)
+            if (!decimal.TryParse(quotedTotal, NumberStyles.Number, CultureInfo.InvariantCulture, out var previousTotal) || previousTotal != model.TotalPrice)
             {
                 ModelState.AddModelError(string.Empty, "The price has changed or the quote is missing. Review the total and submit again.");
 
@@ -620,7 +592,7 @@ namespace StayBnb.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Book([Bind("PropertyId,CheckInDate,CheckOutDate,NumberOfTravelers")]CreateBookingViewModel model)
+        public async Task<IActionResult> Book([Bind("PropertyId,CheckInDate,CheckOutDate,NumberOfTravelers")] CreateBookingViewModel model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -629,9 +601,7 @@ namespace StayBnb.Controllers
                 return Challenge();
             }
 
-            var property = await _context.HostProperties
-                .AsNoTracking()
-                .FirstOrDefaultAsync(property =>
+            var property = await _context.HostProperties.AsNoTracking().FirstOrDefaultAsync(property =>
                     property.Id == model.PropertyId &&
                     property.IsActive &&
                     property.HostId != userId &&
@@ -691,7 +661,7 @@ namespace StayBnb.Controllers
             {
                 if (model.Image.Length == 0)
                 {
-                    ModelState.AddModelError(nameof(model.Image),"The selected image is empty.");
+                    ModelState.AddModelError(nameof(model.Image), "The selected image is empty.");
                 }
                 else if (model.Image.Length > maxImageSize)
                 {
@@ -777,7 +747,7 @@ namespace StayBnb.Controllers
             }
             catch
             {
-                // Database rollback does not remove files from disk.
+                // Database rollback does not remove files
                 if (System.IO.File.Exists(filePath))
                 {
                     System.IO.File.Delete(filePath);
@@ -786,8 +756,7 @@ namespace StayBnb.Controllers
                 throw;
             }
 
-            TempData["Success"] =
-                "Your Host application has been submitted for review.";
+            TempData["Success"] = "Your Host application has been submitted for review.";
 
             return RedirectToAction(nameof(Index));
         }
@@ -813,7 +782,7 @@ namespace StayBnb.Controllers
 
             if (extension == ".png")
             {
-                byte[] pngHeader = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+                byte[] pngHeader = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
 
                 return header.SequenceEqual(pngHeader);
             }

@@ -1,11 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Authentication;
+﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using StayBnb.Data;
 using StayBnb.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace StayBnb.Areas.Identity.Pages.Account
 {
@@ -54,12 +54,10 @@ namespace StayBnb.Areas.Identity.Pages.Account
                 ModelState.AddModelError(string.Empty, ErrorMessage);
             }
 
-            await HttpContext.SignOutAsync(
-                IdentityConstants.ExternalScheme);
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
         }
 
-        public async Task<IActionResult> OnPostAsync(
-            string? returnUrl = null)
+        public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
         {
             ReturnUrl = returnUrl ?? Url.Content("~/");
 
@@ -76,13 +74,11 @@ namespace StayBnb.Areas.Identity.Pages.Account
 
             if (result.Succeeded)
             {
-                var user = await _signInManager.UserManager
-                    .FindByNameAsync(Input.Email);
+                var user = await _signInManager.UserManager.FindByNameAsync(Input.Email);
 
                 if (user == null)
                 {
-                    throw new InvalidOperationException(
-                        "The successfully signed-in account could not be found.");
+                    throw new InvalidOperationException("The successfully signed-in account could not be found.");
                 }
 
                 _context.ActivityLogs.Add(new ActivityLog
@@ -115,8 +111,7 @@ namespace StayBnb.Areas.Identity.Pages.Account
             }
 
             ModelState.AddModelError(
-                string.Empty,
-                "Invalid login attempt.");
+                string.Empty, "Invalid login attempt.");
 
             return Page();
         }

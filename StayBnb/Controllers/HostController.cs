@@ -1,10 +1,10 @@
-﻿using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StayBnb.Data;
 using StayBnb.Models;
 using StayBnb.ViewModels;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace StayBnb.Controllers
@@ -30,9 +30,7 @@ namespace StayBnb.Controllers
                 return Challenge();
             }
 
-            var properties = await _context.HostProperties
-                .AsNoTracking()
-                .Where(property =>
+            var properties = await _context.HostProperties.AsNoTracking().Where(property =>
                     property.HostId == userId &&
                     _context.HostApplications.Any(application =>
                         application.PropertyId == property.Id &&
@@ -187,13 +185,9 @@ namespace StayBnb.Controllers
                 return NotFound();
             }
 
-            submission.Document.Status = approve
-                ? DocumentStatus.Verified
-                : DocumentStatus.Rejected;
+            submission.Document.Status = approve ? DocumentStatus.Verified : DocumentStatus.Rejected;
 
-            submission.CheckIn.Status = approve
-                ? CheckInStatus.Verified
-                : CheckInStatus.Rejected;
+            submission.CheckIn.Status = approve ? CheckInStatus.Verified : CheckInStatus.Rejected;
 
             var decision = approve ? "Verified" : "Rejected";
 
@@ -216,9 +210,7 @@ namespace StayBnb.Controllers
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            TempData["Success"] = approve
-                ? "The Guest's document has been verified."
-                : "The document was rejected. The Guest can upload a replacement.";
+            TempData["Success"] = approve ? "The Guest's document has been verified." : "The document was rejected. The Guest can upload a replacement.";
 
             return RedirectToAction(nameof(CheckInSubmissions));
         }
@@ -293,7 +285,7 @@ namespace StayBnb.Controllers
                 .ToListAsync();
 
             return View(bookings);
-        } 
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -349,8 +341,7 @@ namespace StayBnb.Controllers
                     return RedirectToAction(nameof(BookingRequests));
                 }
 
-                if (booking.CheckInDate.Date < DateTime.Today ||
-                    booking.CheckOutDate.Date <= booking.CheckInDate.Date)
+                if (booking.CheckInDate.Date < DateTime.Today || booking.CheckOutDate.Date <= booking.CheckInDate.Date)
                 {
                     TempData["Error"] = "This request has invalid or past dates and cannot be approved.";
 
@@ -458,9 +449,7 @@ namespace StayBnb.Controllers
                 return Challenge();
             }
 
-            var property = await _context.HostProperties
-                .AsNoTracking()
-                .FirstOrDefaultAsync(property =>
+            var property = await _context.HostProperties.AsNoTracking().FirstOrDefaultAsync(property =>
                     property.Id == id &&
                     property.HostId == userId &&
                     _context.HostApplications.Any(application =>
@@ -496,8 +485,7 @@ namespace StayBnb.Controllers
                 return Challenge();
             }
 
-            var property = await _context.HostProperties
-                .FirstOrDefaultAsync(property =>
+            var property = await _context.HostProperties.FirstOrDefaultAsync(property =>
                     property.Id == model.Id &&
                     property.HostId == userId &&
                     _context.HostApplications.Any(application =>
@@ -572,7 +560,7 @@ namespace StayBnb.Controllers
 
             if (process != null)
             {
-                var instructions =JsonSerializer.Deserialize<CheckInInstructions>(process.StepsJson)
+                var instructions = JsonSerializer.Deserialize<CheckInInstructions>(process.StepsJson)
                     ?? throw new InvalidOperationException("The saved check-in instructions are invalid.");
 
                 model.Title = process.Title;
@@ -585,7 +573,7 @@ namespace StayBnb.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ConfigureCheckIn([Bind("PropertyId,Title,Instructions,RequiredDocumentType")]CheckInProcessViewModel model)
+        public async Task<IActionResult> ConfigureCheckIn([Bind("PropertyId,Title,Instructions,RequiredDocumentType")] CheckInProcessViewModel model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -627,7 +615,7 @@ namespace StayBnb.Controllers
 
             if (instructions.Steps.Count == 0)
             {
-                ModelState.AddModelError(nameof(model.Instructions),"Enter at least one instruction.");
+                ModelState.AddModelError(nameof(model.Instructions), "Enter at least one instruction.");
 
                 return View(model);
             }
@@ -695,8 +683,7 @@ namespace StayBnb.Controllers
             await using var transaction =
                 await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
-            var booking = await _context.Bookings
-                .FirstOrDefaultAsync(booking =>
+            var booking = await _context.Bookings.FirstOrDefaultAsync(booking =>
                     booking.Id == bookingId &&
                     booking.Status == BookingStatus.Approved &&
                     _context.HostProperties.Any(property =>
@@ -708,7 +695,7 @@ namespace StayBnb.Controllers
                 return NotFound();
             }
 
-            var verified = await _context.GuestCheckIns .AnyAsync(checkIn => checkIn.BookingId == booking.Id && checkIn.Status == CheckInStatus.Verified);
+            var verified = await _context.GuestCheckIns.AnyAsync(checkIn => checkIn.BookingId == booking.Id && checkIn.Status == CheckInStatus.Verified);
 
             if (!verified)
             {
@@ -763,8 +750,7 @@ namespace StayBnb.Controllers
 
             await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
-            var booking = await _context.Bookings
-                .FirstOrDefaultAsync(booking =>
+            var booking = await _context.Bookings.FirstOrDefaultAsync(booking =>
                     booking.Id == bookingId &&
                     booking.Status == BookingStatus.CheckedIn &&
                     _context.HostProperties.Any(property =>

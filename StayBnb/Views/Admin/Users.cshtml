@@ -28,19 +28,13 @@
     <label for="search" class="form-label">Search by email</label>
 
     <div class="input-group">
-        <input id="search"
-               name="search"
-               value="@ViewData["Search"]"
-               class="form-control"
-               placeholder="Enter an email address" />
+        <input id="search" name="search" value="@ViewData["Search"]" class="form-control"placeholder="Enter an email address" />
 
         <button type="submit" class="btn btn-primary">
             Search
         </button>
 
-        <a asp-controller="Admin"
-           asp-action="Users"
-           class="btn btn-outline-secondary">
+        <a asp-controller="Admin" asp-action="Users" class="btn btn-outline-secondary">
             Clear
         </a>
     </div>
@@ -65,9 +59,7 @@ else
                 <tr>
                     <td>@user.Email</td>
                     <td>
-                        <form asp-controller="Admin"
-                              asp-action="PromoteToAdmin"
-                              method="post">
+                        <form asp-controller="Admin" asp-action="PromoteToAdmin" method="post">
 
                             <input type="hidden"
                                    name="id"
